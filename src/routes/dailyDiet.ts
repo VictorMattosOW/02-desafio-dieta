@@ -8,6 +8,7 @@ const dailyDietBodySchema = z.object({
   title: z.string(),
   description: z.string(),
   isDiet: z.boolean(),
+  date: z.string()
 });
 
 const getIdDailyDietParamsSchema = z.object({
@@ -25,7 +26,7 @@ export async function DailyDiet(app: FastifyInstance) {
 
   app.post('/', async (request, reply) => {
 
-    const { title, description, isDiet } = dailyDietBodySchema.parse(request.body);
+    const { title, description, isDiet, date } = dailyDietBodySchema.parse(request.body);
 
     let { sessionId } = request.cookies;
 
@@ -43,6 +44,7 @@ export async function DailyDiet(app: FastifyInstance) {
       title,
       description,
       isDiet,
+      date,
       session_id: sessionId,
     })
 
@@ -84,6 +86,27 @@ export async function DailyDiet(app: FastifyInstance) {
 
     return {
       totalWithinDiet,
+    }
+  })
+
+  app.get('/bestSequency', async (request) => {
+    const { sessionId } = request.cookies;
+
+    const totalDays = await knex('dailyDiet')
+      .where('session_id', sessionId);
+
+    let current = 0, longest = 0;
+    totalDays.forEach(day => {
+      if (day.isDiet) {
+        current++;
+        longest = Math.max(current, longest);
+      } else {
+        current = 0;
+      }
+    });
+
+    return {
+      longest,
     }
   })
 
@@ -138,7 +161,7 @@ export async function DailyDiet(app: FastifyInstance) {
 
     const { id } = getIdDailyDietParamsSchema.parse(request.params);
 
-    const { title, description, isDiet } = dailyDietBodySchema.parse(request.body);
+    const { title, description, isDiet, date } = dailyDietBodySchema.parse(request.body);
     console.log(title, description);
 
     try {
@@ -148,7 +171,8 @@ export async function DailyDiet(app: FastifyInstance) {
         .update({
           title,
           description,
-          isDiet
+          isDiet,
+          date
         })
 
       return reply.status(200).send();
